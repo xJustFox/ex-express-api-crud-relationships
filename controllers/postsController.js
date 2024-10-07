@@ -75,14 +75,21 @@ const index = async (req, res, next) => {
 const store = async (req, res, next) => {
 
     try {
-        const { title, content, published, image } = req.body;
+        const { title, content, published, image, categoryId, tags } = req.body;
         const posts = await prisma.post.findMany();
         const data = {
             title,
             slug: createSlug(title, posts),
             content,
             published,
-            image
+            image,
+            tags: {
+                connect: tags.map(id => ({ id }))
+            }
+        }
+
+        if (categoryId) {
+            data.categoryId = categoryId;
         }
 
         const newPost = await prisma.post.create({ data });
@@ -138,10 +145,25 @@ const show = async (req, res, next) => {
 const update = async (req, res, next) => {
     try {
         const { slug } = req.params;
+        const { title, content, published, image, categoryId, tags } = req.body;
+
+        const data = {
+            title,
+            content,
+            published,
+            image,
+            tags: {
+                set: tags.map(id => ({ id }))
+            }
+        }
+
+        if (categoryId) {
+            data.categoryId = categoryId;
+        }
 
         const updatedPost = await prisma.post.update({
             where: { slug },
-            data: req.body
+            data
         })
         res.status(200).json({
             status: 200,
