@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 const { createSlug } = require('../utils.js');
 
 const index = async (req, res, next) => {
-    let { published, word, page = 1, limit = 5} = req.query;
+    let { published, word, page = 1, limit = 5 } = req.query;
 
     if (published === 'true') {
         published = true;
@@ -18,11 +18,11 @@ const index = async (req, res, next) => {
         title: { contains: word },
         content: { contains: word }
     }
-    
+
     const offset = (page - 1) * limit;
-    const totalItems = await prisma.post.count({where});
+    const totalItems = await prisma.post.count({ where });
     const totalPages = Math.ceil(totalItems / limit);
-    
+
     if (page > totalPages) {
         res.status(404).json({
             status: 404,
@@ -31,11 +31,23 @@ const index = async (req, res, next) => {
         })
     }
     try {
-        const posts = await prisma.post.findMany({ 
+        const posts = await prisma.post.findMany({
             where,
+            include: {
+                category: {
+                    select: {
+                        name: true
+                    }
+                },
+                tags: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
             take: parseInt(limit),
             skip: parseInt(offset)
-         });
+        });
 
         const count = parseInt(posts.length);
         if (count === 0) {
@@ -88,9 +100,31 @@ const store = async (req, res, next) => {
 const show = async (req, res, next) => {
     try {
         const { slug } = req.params;
-        
-        const foundPost = await prisma.post.findUnique({ where: { slug } });
-    
+
+        const foundPost = await prisma.post.findUnique({
+            where: { slug },
+            include: {
+                category: {
+                    select: {
+                        name: true
+                    }
+                },
+                tags: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+        });
+
+        if (!foundPost) {
+            return res.status(404).json({
+                status: 404,
+                success: false,
+                message: 'Post not found',
+            });
+        }
+
         res.status(200).json({
             status: 200,
             success: true,
@@ -103,10 +137,10 @@ const show = async (req, res, next) => {
 
 const update = async (req, res, next) => {
     try {
-        const {slug} = req.params;
+        const { slug } = req.params;
 
         const updatedPost = await prisma.post.update({
-            where: {slug},
+            where: { slug },
             data: req.body
         })
         res.status(200).json({
@@ -121,9 +155,9 @@ const update = async (req, res, next) => {
 
 const destroy = async (req, res, next) => {
     try {
-        const {slug} = req.params;
+        const { slug } = req.params;
 
-        const deletedPost = await prisma.post.delete({where: {slug}})
+        const deletedPost = await prisma.post.delete({ where: { slug } })
         res.status(200).json({
             status: 200,
             success: true,
